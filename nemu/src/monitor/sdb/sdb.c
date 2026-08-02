@@ -19,6 +19,7 @@
 #include <isa.h>
 #include <readline/history.h>
 #include <readline/readline.h>
+#include <string.h>
 
 static int is_batch_mode = false;
 
@@ -76,6 +77,23 @@ static int cmd_q(char *args)
     return -1;
 }
 
+static int cmd_info(char *args)
+{
+    char *token = strtok(args, " ");
+    if (strcmp(token, "r") == 0)
+    {
+        isa_reg_display();
+    }
+    else if (strcmp(token, "w") == 0)
+    {
+        printf("Print watch point\n");
+    }
+    else
+    {
+        Log("Error argement");
+    }
+    return 0;
+}
 
 static int cmd_help(char *args);
 
@@ -89,6 +107,7 @@ static struct
     {"c", "Continue the execution of the program", cmd_c},
     {"q", "Exit NEMU", cmd_q},
     {"si", "Single step execution", cmd_si},
+    {"info", "Print information", cmd_info},
 
     /* TODO: Add more commands */
 
