@@ -24,10 +24,17 @@ static uint8_t *pmem = NULL;
 static uint8_t pmem[CONFIG_MSIZE] PG_ALIGN = {};
 #endif
 
+/*
+ * 客户机内存地址转换为宿主机内存地址
+ */
 uint8_t *guest_to_host(paddr_t paddr)
 {
     return pmem + paddr - CONFIG_MBASE;
 }
+
+/*
+ * 宿主机内存地址转换为客户机内存地址
+ */
 paddr_t host_to_guest(uint8_t *haddr)
 {
     return haddr - pmem + CONFIG_MBASE;
@@ -35,7 +42,7 @@ paddr_t host_to_guest(uint8_t *haddr)
 
 static word_t pmem_read(paddr_t addr, int len)
 {
-    word_t ret = host_read(guest_to_host(addr), len);
+    word_t ret = host_read(guest_to_host(addr), len); // 把客户机物理地址翻译成宿主机数组下标，按 len 宽度读出来
     return ret;
 }
 
@@ -68,7 +75,7 @@ word_t paddr_read(paddr_t addr, int len)
 {
     if (likely(in_pmem(addr)))
         return pmem_read(addr, len);
-    IFDEF(CONFIG_DEVICE, return mmio_read(addr, len));
+    IFDEF(CONFIG_DEVICE, return mmio_read(addr, len)); // 不在内存但有设备支持，交给设备模拟层读
     out_of_bound(addr);
     return 0;
 }
