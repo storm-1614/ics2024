@@ -15,10 +15,12 @@
 
 #include "sdb.h"
 #include "debug.h"
+#include "memory/paddr.h"
 #include <cpu/cpu.h>
 #include <isa.h>
 #include <readline/history.h>
 #include <readline/readline.h>
+#include <stdio.h>
 #include <string.h>
 
 static int is_batch_mode = false;
@@ -95,6 +97,36 @@ static int cmd_info(char *args)
     return 0;
 }
 
+static int cmd_x(char *args)
+{
+    int size, i;
+    paddr_t addr, content;
+    if (args == NULL)
+    {
+        Log("Error argement.");
+        return 0;
+    }
+    if (sscanf(args, "%d %x", &size, &addr) == 2)
+    {
+        if (!in_pmem(addr)){
+            Log("Error memory address");
+            return 0;
+        }
+        for (i = 0; i < size; i++)
+        {
+            addr += 4 * i;
+            content = paddr_read(addr, 4);
+            printf("0x%.8x -> 0x%.8x\n", addr, content);
+        }
+    }
+    else
+    {
+        Log("Error argement.");
+        return 0;
+    }
+    return 0;
+}
+
 static int cmd_help(char *args);
 
 static struct
@@ -108,6 +140,7 @@ static struct
     {"q", "Exit NEMU", cmd_q},
     {"si", "Single step execution", cmd_si},
     {"info", "Print information", cmd_info},
+    {"x", "Scan memory", cmd_x},
 
     /* TODO: Add more commands */
 
