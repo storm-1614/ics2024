@@ -108,7 +108,8 @@ static int cmd_x(char *args)
     }
     if (sscanf(args, "%d %x", &size, &addr) == 2)
     {
-        if (!in_pmem(addr)){
+        if (!in_pmem(addr))
+        {
             Log("Error memory address");
             return 0;
         }
@@ -127,6 +128,21 @@ static int cmd_x(char *args)
     return 0;
 }
 
+static int cmd_p(char *args)
+{
+    bool success = true;
+    word_t result = expr(args, &success);
+    if (success)
+    {
+        printf("%u\n", result);
+    }
+    else
+    {
+        printf("Invalid expression.\n");
+    }
+    return 0;
+}
+
 static int cmd_help(char *args);
 
 static struct
@@ -141,6 +157,7 @@ static struct
     {"si", "Single step execution", cmd_si},
     {"info", "Print information", cmd_info},
     {"x", "Scan memory", cmd_x},
+    {"p", "Expression evaluation", cmd_p},
 
     /* TODO: Add more commands */
 

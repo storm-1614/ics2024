@@ -13,6 +13,7 @@
  * See the Mulan PSL v2 for more details.
  ***************************************************************************************/
 
+#include "debug.h"
 #include <isa.h>
 
 /* We use the POSIX regex functions to process regular expressions.
@@ -22,10 +23,9 @@
 
 enum
 {
-    TK_NOTYPE = 256,
+    TK_NOTYPE = 256, // 空格串
     TK_EQ,
-
-    /* TODO: Add more token types */
+    TK_NUM, // 数字类型，十进制数字
 };
 
 static struct rule
@@ -34,13 +34,20 @@ static struct rule
     int token_type;
 } rules[] = {
 
-    /* TODO: Add more rules.
-     * Pay attention to the precedence level of different rules.
+    /* 
+     * 规则按表从上到下匹配
      */
 
     {" +", TK_NOTYPE}, // spaces
     {"\\+", '+'},      // plus
-    {"==", TK_EQ},     // equal
+    {"\\-", '-'},      // minus
+    {"\\*", '*'},      // multiply
+    {"\\/", '/'},      // divison
+    {"\\(", '('},      // left bracket
+    {"\\)", ')'},      // right bracket
+    // 如果以后要支持十六进制，要把匹配项放在十进制前面
+    {"[0-9]+", TK_NUM}, // dec number
+    {"==", TK_EQ},      // equal
 };
 
 #define NR_REGEX ARRLEN(rules)
@@ -76,6 +83,9 @@ typedef struct token
 static Token tokens[32] __attribute__((used)) = {};
 static int nr_token __attribute__((used)) = 0;
 
+/*
+ * 把一行表达式字符串，切成 token，存进全局 tokens[] 数组
+ */
 static bool make_token(char *e)
 {
     int position = 0;
@@ -97,17 +107,27 @@ static bool make_token(char *e)
                 Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s", i, rules[i].regex, position,
                     substr_len, substr_len, substr_start);
 
-                position += substr_len;
+                position += substr_len; // position 移到下一段
 
-                /* TODO: Now a new token is recognized with rules[i]. Add codes
-                 * to record the token in the array `tokens'. For certain types
-                 * of tokens, some extra actions should be performed.
+                /*
+                 * 记录 Token
                  */
 
                 switch (rules[i].token_type)
                 {
+                case TK_NOTYPE:
+                    break;
+                case TK_NUM:
+                    Assert(substr_len < 32, "溢出! substr_len=%d", substr_len);
+                    strncpy(tokens[nr_token].str, substr_start, substr_len);
+                    tokens[nr_token].str[substr_len] = '\0'; // 补结束符
+                    tokens[nr_token].type = TK_NUM;
+                    nr_token++;
+                    break;
                 default:
-                    TODO();
+                    tokens[nr_token].type = rules[i].token_type;
+                    nr_token++;
+                    break;
                 }
 
                 break;
@@ -124,6 +144,101 @@ static bool make_token(char *e)
     return true;
 }
 
+// 检查是否被最外层的一对括号完整包裹
+// 需要验证这对括号中间有没有提前闭合
+bool check_parentheses(int p, int q)
+{
+    // 最基本的检查，开头结尾必须是闭合括号
+    if (tokens[p].type != '(' || tokens[q].type != ')')
+        return false;
+    int depth = 0;              // 记录括号深度
+    for (int i = p; i < q; i++) // 只检查 p ~ q-1 区间，深度有没有提前归零
+    {
+        if (tokens[i].type == '(')
+            depth++;
+        else if (tokens[i].type == ')')
+            depth--;
+
+        Assert(depth >= 0, "Error depth"); // 右括号先于左括号，括号不配对
+
+        if (depth == 0)
+            return false;
+    }
+    return depth == 1;
+}
+
+int find_dominant_operator(int p, int q)
+{
+    int op = -1;
+    int depth = 0;
+    int best_prio = 10; // 越高越不优先
+
+    for (int i = p; i <= q; i++)
+    {
+        int prio;
+        switch (tokens[i].type)
+        {
+        case '(':
+            depth++;
+            continue;
+        case ')':
+            depth--;
+            continue;
+        case '+':
+        case '-':
+            prio = 1;
+            break;
+        case '*':
+        case '/':
+            prio = 2;
+            break;
+        default:
+            continue;
+        }
+
+        if (depth == 0 && prio <= best_prio)
+        {
+            op = i;
+            best_prio = prio;
+        }
+    }
+    return op;
+}
+
+int eval(int p, int q)
+{
+    Assert(p <= q, "Bad expression");
+    if (p == q)
+    {
+        Assert(tokens[p].type == TK_NUM, "Is not Number");
+        return (int)strtol(tokens[p].str, NULL, 10);
+    }
+
+    if (check_parentheses(p, q)) // 去除括号
+    {
+        return eval(p + 1, q - 1);
+    }
+
+    int op = find_dominant_operator(p, q); // 找主运算符
+    Assert(op != -1, "Not found dominant operator");
+    switch (tokens[op].type)
+    {
+    case '+':
+        return eval(p, op - 1) + eval(op + 1, q);
+    case '-':
+        return eval(p, op - 1) - eval(op + 1, q);
+    case '*':
+        return eval(p, op - 1) * eval(op + 1, q);
+    case '/':
+        return eval(p, op - 1) / eval(op + 1, q);
+    default:
+        Assert(0, "Error operator");
+    }
+}
+
+/*
+ * 计算，递归求值
+ */
 word_t expr(char *e, bool *success)
 {
     if (!make_token(e))
@@ -132,8 +247,6 @@ word_t expr(char *e, bool *success)
         return 0;
     }
 
-    /* TODO: Insert codes to evaluate the expression. */
-    TODO();
-
-    return 0;
+    *success = true;
+    return eval(0, nr_token - 1);
 }
