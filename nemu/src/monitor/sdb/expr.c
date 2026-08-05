@@ -21,6 +21,7 @@
  * Type 'man regex' for more information about POSIX regex functions.
  */
 #include <regex.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -243,60 +244,85 @@ int find_dominant_operator(int p, int q)
 /*
  * 求值
  */
-int eval(int p, int q)
+int eval(int p, int q, bool *success)
 {
-    Assert(p <= q, "Bad expression");
+    if (p > q)
+    {
+        Log("Bad expression");
+        *success = false;
+        return 0;
+    }
     if (p == q) // 递归到只剩下一个词，仅剩下操作数
     {
-        Assert(tokens[p].type == TK_NUM || tokens[p].type == TK_HEX || tokens[p].type == TK_REG,
-               "Is not operate number");
+        if (!(tokens[p].type == TK_NUM || tokens[p].type == TK_HEX || tokens[p].type == TK_REG))
+        {
+            Log("Is not operate number");
+            *success = false;
+            return 0;
+        }
         if (tokens[p].type == TK_NUM)
             return (int)strtol(tokens[p].str, NULL, 10);
         else if (tokens[p].type == TK_HEX)
             return (int)strtol(tokens[p].str, NULL, 16);
         else if (tokens[p].type == TK_REG)
         {
-            bool success = true;
-            int reg_val = isa_reg_str2val(tokens[p].str, &success);
-            Assert(success, "Error register");
+            bool valid = true;
+            int reg_val = isa_reg_str2val(tokens[p].str, &valid);
+            if (!valid)
+            {
+                Log("Error register");
+                *success = false;
+                return 0;
+            }
 
             return reg_val;
         }
         else
-            Assert(0, "Error token type");
+        {
+            Log("Error token type");
+            *success = false;
+            return 0;
+        }
     }
 
     if (check_parentheses(p, q)) // 去除括号
     {
-        return eval(p + 1, q - 1);
+        return eval(p + 1, q - 1, success);
     }
 
     if (tokens[p].type == TK_NEG) // 负号
-        return -eval(p + 1, q);
+        return -eval(p + 1, q, success);
 
     if (tokens[p].type == TK_DEREF) // 解引用
-        return paddr_read(eval(p + 1, q), 4);
+        return paddr_read(eval(p + 1, q, success), 4);
 
     int op = find_dominant_operator(p, q); // 找主运算符
-    Assert(op != -1, "Not found dominant operator");
+    if (op == -1)
+    {
+        Log("Not found dominant operator");
+        *success = false;
+        return 0;
+    }
     switch (tokens[op].type)
     {
     case '+':
-        return eval(p, op - 1) + eval(op + 1, q);
+        return eval(p, op - 1, success) + eval(op + 1, q, success);
     case '-':
-        return eval(p, op - 1) - eval(op + 1, q);
+        return eval(p, op - 1, success) - eval(op + 1, q, success);
     case '*':
-        return eval(p, op - 1) * eval(op + 1, q);
+        return eval(p, op - 1, success) * eval(op + 1, q, success);
     case '/':
-        return eval(p, op - 1) / eval(op + 1, q);
+        return eval(p, op - 1, success) / eval(op + 1, q, success);
     case TK_EQ:
-        return eval(p, op - 1) == eval(op + 1, q);
+        return eval(p, op - 1, success) == eval(op + 1, q, success);
     case TK_NQ:
-        return eval(p, op - 1) != eval(op + 1, q);
+        return eval(p, op - 1, success) != eval(op + 1, q, success);
     case TK_AND:
-        return eval(p, op - 1) && eval(op + 1, q);
+        return eval(p, op - 1, success) && eval(op + 1, q, success);
     default:
-        Assert(0, "Error operator");
+        Log("Error operator");
+        *success = false;
+        return 0;
     }
 }
 
@@ -334,5 +360,5 @@ word_t expr(char *e, bool *success)
     }
 
     *success = true;
-    return eval(0, nr_token - 1);
+    return eval(0, nr_token - 1, success);
 }
