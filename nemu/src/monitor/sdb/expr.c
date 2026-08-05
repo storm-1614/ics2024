@@ -14,6 +14,7 @@
  ***************************************************************************************/
 
 #include "debug.h"
+#include "memory/paddr.h"
 #include <isa.h>
 
 /* We use the POSIX regex functions to process regular expressions.
@@ -238,6 +239,9 @@ int eval(int p, int q)
 
     if (tokens[p].type == TK_NEG) // 一元运算符
         return -eval(p + 1, q);
+
+    if (tokens[p].type == TK_DEREF)
+        return paddr_read(eval(p + 1, q), 4);
 
     int op = find_dominant_operator(p, q); // 找主运算符
     Assert(op != -1, "Not found dominant operator");
