@@ -31,8 +31,10 @@ enum
     TK_NUM,   // 数字类型，十进制数字
     TK_DEREF, // * 解引用
     TK_NEG,   // - 负号
-    TK_HEX,
-    TK_REG,
+    TK_HEX,   // 十六进制数字
+    TK_REG,   // 寄存器
+    TK_NQ,    // 不等于
+    TK_AND,   // &&
 };
 
 static struct rule
@@ -56,6 +58,8 @@ static struct rule
     {"0[xX][0-9a-fA-F]+", TK_HEX}, // hex number
     {"[0-9]+", TK_NUM},            // dec number
     {"==", TK_EQ},                 // equal
+    {"!=", TK_NQ},                 // no equal
+    {"&&", TK_AND},                // and
 };
 
 #define NR_REGEX ARRLEN(rules)
@@ -216,6 +220,13 @@ int find_dominant_operator(int p, int q)
         case '/':
             prio = 2;
             break;
+        case TK_EQ:
+        case TK_NQ:
+            prio = 3;
+            break;
+        case TK_AND:
+            prio = 4;
+            break;
         default:
             continue;
         }
@@ -229,6 +240,9 @@ int find_dominant_operator(int p, int q)
     return op;
 }
 
+/*
+ * 求值
+ */
 int eval(int p, int q)
 {
     Assert(p <= q, "Bad expression");
@@ -275,6 +289,12 @@ int eval(int p, int q)
         return eval(p, op - 1) * eval(op + 1, q);
     case '/':
         return eval(p, op - 1) / eval(op + 1, q);
+    case TK_EQ:
+        return eval(p, op - 1) == eval(op + 1, q);
+    case TK_NQ:
+        return eval(p, op - 1) != eval(op + 1, q);
+    case TK_AND:
+        return eval(p, op - 1) && eval(op + 1, q);
     default:
         Assert(0, "Error operator");
     }
