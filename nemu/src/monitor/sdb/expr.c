@@ -32,6 +32,7 @@ enum
     TK_DEREF, // * 解引用
     TK_NEG,   // - 负号
     TK_HEX,
+    TK_REG,
 };
 
 static struct rule
@@ -51,6 +52,7 @@ static struct rule
     {"\\/", '/'},                  // divison
     {"\\(", '('},                  // left bracket
     {"\\)", ')'},                  // right bracket
+    {"\\$[a-z0-9]+", TK_REG},      // register
     {"0[xX][0-9a-fA-F]+", TK_HEX}, // hex number
     {"[0-9]+", TK_NUM},            // dec number
     {"==", TK_EQ},                 // equal
@@ -122,6 +124,13 @@ static bool make_token(char *e)
                 switch (rules[i].token_type)
                 {
                 case TK_NOTYPE:
+                    break;
+                case TK_REG:
+                    Assert(substr_len < 32, "溢出！substr_len=%d", substr_len);
+                    strncpy(tokens[nr_token].str, substr_start, substr_len);
+                    tokens[nr_token].str[substr_len] = '\0'; // 补结束符
+                    tokens[nr_token].type = TK_REG;
+                    nr_token++;
                     break;
                 case TK_HEX:
                     Assert(substr_len < 32, "溢出! substr_len=%d", substr_len);
@@ -225,11 +234,22 @@ int eval(int p, int q)
     Assert(p <= q, "Bad expression");
     if (p == q) // 递归到只剩下一个词，仅剩下操作数
     {
-        Assert(tokens[p].type == TK_NUM || tokens[p].type == TK_HEX, "Is not Number");
+        Assert(tokens[p].type == TK_NUM || tokens[p].type == TK_HEX || tokens[p].type == TK_REG,
+               "Is not operate number");
         if (tokens[p].type == TK_NUM)
             return (int)strtol(tokens[p].str, NULL, 10);
-        else // 16 进制
+        else if (tokens[p].type == TK_HEX)
             return (int)strtol(tokens[p].str, NULL, 16);
+        else if (tokens[p].type == TK_REG)
+        {
+            bool success = true;
+            int reg_val = isa_reg_str2val(tokens[p].str, &success);
+            Assert(success, "Error register");
+
+            return reg_val;
+        }
+        else
+            Assert(0, "Error token type");
     }
 
     if (check_parentheses(p, q)) // 去除括号
@@ -237,10 +257,10 @@ int eval(int p, int q)
         return eval(p + 1, q - 1);
     }
 
-    if (tokens[p].type == TK_NEG) // 一元运算符
+    if (tokens[p].type == TK_NEG) // 负号
         return -eval(p + 1, q);
 
-    if (tokens[p].type == TK_DEREF)
+    if (tokens[p].type == TK_DEREF) // 解引用
         return paddr_read(eval(p + 1, q), 4);
 
     int op = find_dominant_operator(p, q); // 找主运算符
@@ -279,15 +299,15 @@ word_t expr(char *e, bool *success)
          */
         if (tokens[i].type == '*')
         {
-            bool ismultiply =
-                (i > 0 && (tokens[i - 1].type == ')' || tokens[i - 1].type == TK_NUM || tokens[i - 1].type == TK_HEX));
+            bool ismultiply = (i > 0 && (tokens[i - 1].type == ')' || tokens[i - 1].type == TK_NUM ||
+                                         tokens[i - 1].type == TK_HEX || tokens[i - 1].type == TK_REG));
             if (!ismultiply)
                 tokens[i].type = TK_DEREF;
         }
         else if (tokens[i].type == '-')
         {
-            bool isnegative =
-                (i > 0 && (tokens[i - 1].type == ')' || tokens[i - 1].type == TK_NUM || tokens[i - 1].type == TK_HEX));
+            bool isnegative = (i > 0 && (tokens[i - 1].type == ')' || tokens[i - 1].type == TK_NUM ||
+                                         tokens[i - 1].type == TK_HEX || tokens[i - 1].type == TK_REG));
             if (!isnegative)
                 tokens[i].type = TK_NEG;
         }
