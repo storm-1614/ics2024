@@ -236,6 +236,9 @@ int eval(int p, int q)
         return eval(p + 1, q - 1);
     }
 
+    if (tokens[p].type == TK_NEG) // 一元运算符
+        return -eval(p + 1, q);
+
     int op = find_dominant_operator(p, q); // 找主运算符
     Assert(op != -1, "Not found dominant operator");
     switch (tokens[op].type)
@@ -267,11 +270,22 @@ word_t expr(char *e, bool *success)
 
     for (i = 0; i < nr_token; i++)
     {
+        /*
+         * 解引用和负号是一元运算符，要确认是一元运算符给予其准确的标签
+         */
         if (tokens[i].type == '*')
         {
-            bool ismultiply = (i > 0 && (tokens[i - 1].type == ')' || tokens[i - 1].type == TK_NUM || tokens[i-1].type == TK_HEX));
+            bool ismultiply =
+                (i > 0 && (tokens[i - 1].type == ')' || tokens[i - 1].type == TK_NUM || tokens[i - 1].type == TK_HEX));
             if (!ismultiply)
                 tokens[i].type = TK_DEREF;
+        }
+        else if (tokens[i].type == '-')
+        {
+            bool isnegative =
+                (i > 0 && (tokens[i - 1].type == ')' || tokens[i - 1].type == TK_NUM || tokens[i - 1].type == TK_HEX));
+            if (!isnegative)
+                tokens[i].type = TK_NEG;
         }
     }
 
