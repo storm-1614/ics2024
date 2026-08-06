@@ -13,7 +13,7 @@
  * See the Mulan PSL v2 for more details.
  ***************************************************************************************/
 
-#include "sdb.h"
+#include <monitor/sdb.h>
 #include "debug.h"
 #include "memory/paddr.h"
 #include <cpu/cpu.h>
@@ -27,6 +27,9 @@ static int is_batch_mode = false;
 
 void init_regex();
 void init_wp_pool();
+int add_wp(char *e);
+int free_wp(int idx);
+void list_watch_point();
 
 /* We use the `readline' library to provide more flexibility to read from stdin. */
 static char *rl_gets()
@@ -88,7 +91,7 @@ static int cmd_info(char *args)
     }
     else if (strcmp(token, "w") == 0)
     {
-        printf("Print watch point\n");
+        list_watch_point();
     }
     else
     {
@@ -143,6 +146,40 @@ static int cmd_p(char *args)
     return 0;
 }
 
+static int cmd_w(char *args)
+{
+    if (args == NULL)
+    {
+        Log("Not expression");
+        return 0;
+    }
+    int ret;
+    ret = add_wp(args);
+
+    if (ret == -1)
+        Log("Add error");
+    else if (ret == -2)
+        Log("Expression error");
+    else
+        printf("Add watchpoint %d\n", ret);
+    return 0;
+}
+
+static int cmd_d(char *args)
+{
+    int idx;
+    if (args == NULL)
+    {
+        Log("Not watchpoint");
+        return 0;
+    }
+    if (sscanf(args, "%d", &idx) == 1)
+        free_wp(idx);
+    else
+        Log("Invaild argement");
+    return 0;
+}
+
 static int cmd_help(char *args);
 
 static struct
@@ -158,6 +195,8 @@ static struct
     {"info", "Print information", cmd_info},
     {"x", "Scan memory", cmd_x},
     {"p", "Expression evaluation", cmd_p},
+    {"w", "Set watchpoint", cmd_w},
+    {"d", "Delete watchpoint", cmd_d},
 
     /* TODO: Add more commands */
 
