@@ -40,6 +40,11 @@ word_t isa_reg_str2val(const char *s, bool *success)
         *success = true;
         return cpu.gpr[0];
     }
+    else if (!strcmp(s, "$pc"))
+    {
+        *success = true;
+        return cpu.pc;
+    }
     for (i = 1; i < reg_num; i++)
     {
         if (!strcmp(s + 1, regs[i]))
