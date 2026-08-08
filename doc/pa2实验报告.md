@@ -87,3 +87,38 @@ INSTPAT("??????? ????? ????? ??? ????? 00101 11", auipc, U, R(rd) = s->pc + imm)
 
 这里的 __VA_ARGS__ 就是我们指令的命令！我们把执行的操作也做了。  
 天哪！终于搞懂了一点点……  
+
+## 适配 dummy.c
+dummy.c 就是一个空函数，最简单的 C 程序了。  
+
+需要实现如下的指令。  
+``` c
+INSTPAT("??????? ????? ????? 000 ????? 00100 11", addi, I, R(rd) = src1 + imm);
+INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr, I, R(rd) = s->pc + 4; s->dnpc = src1 + imm);
+INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal, J, R(rd) = s->pc + 4; s->dnpc = s->pc + imm);
+INSTPAT("??????? ????? ????? 010 ????? 01000 11", sw, S, Mw(src1 + imm, 4, src2));
+```
+
+翻 RISC-V 开放架构设计之道这本书看一些实现，还有 [https://ai-embedded.com/risc-v/riscv-isa-manual/](https://ai-embedded.com/risc-v/riscv-isa-manual/)。  
+
+比如 jal：  
+
+![](./res/jal.png)  
+
+另外 jal 是 J 类型的指令，还要实现 immJ 宏，RISC-V 开放架构设计之道的第 15、16 页写得比较清楚，需要做比较繁琐的位运算：  
+``` c
+#define immJ()                                                                                                         \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        *imm = SEXT(BITS(i, 31, 31), 1) << 20 | BITS(i, 30, 21) << 1 | BITS(i, 20, 20) << 11 | BITS(i, 19, 12) << 12;  \
+    } while (0)
+```
+
+然后在 decode_operand 补上 TYPE_J：
+``` c
+case TYPE_J:
+    immJ();
+    break;
+```
+
+就可以了。主要是看指令的类型，指令的用法。以及，要善用 gdb attach 进程，给程序打断点，看结构体数据什么的很好用。总的来说，难度中上。  
