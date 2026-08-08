@@ -30,6 +30,8 @@ enum
     TYPE_S,
     TYPE_N, // none
     TYPE_J,
+    TYPE_B,
+    TYPE_R,
 };
 
 #define src1R()                                                                                                        \
@@ -62,6 +64,11 @@ enum
     {                                                                                                                  \
         *imm = SEXT(BITS(i, 31, 31), 1) << 20 | BITS(i, 30, 21) << 1 | BITS(i, 20, 20) << 11 | BITS(i, 19, 12) << 12;  \
     } while (0)
+#define immB()                                                                                                         \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        *imm = SEXT(BITS(i, 31, 31), 1) << 12 | BITS(i, 30, 25) << 5 | BITS(i, 11, 8) << 1 | BITS(i, 7, 7) << 11;      \
+    } while (0)
 
 /* 按 type 规定的位布局，从机器码里把所有数值取出来，填进指针参数
  */
@@ -89,6 +96,15 @@ static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_
         break;
     case TYPE_J:
         immJ();
+        break;
+    case TYPE_B:
+        immB();
+        src1R();
+        src2R();
+        break;
+    case TYPE_R:
+        src1R();
+        src2R();
         break;
     default:
         panic("unsupported type = %d", type);
@@ -118,9 +134,17 @@ static int decode_exec(Decode *s)
     INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak, N, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
 
     INSTPAT("??????? ????? ????? 000 ????? 00100 11", addi, I, R(rd) = src1 + imm);
-    INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr, I, R(rd) = s->pc + 4; s->dnpc = src1 + imm);
+    INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr, I, R(rd) = s->pc + 4; s->dnpc = src1 + imm); // ret
     INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal, J, R(rd) = s->pc + 4; s->dnpc = s->pc + imm);
     INSTPAT("??????? ????? ????? 010 ????? 01000 11", sw, S, Mw(src1 + imm, 4, src2));
+
+    INSTPAT("??????? ????? ????? 010 ????? 00000 11", lw, I, R(rd) = Mr(src1 + imm, 4));
+    INSTPAT("??????? ????? ????? 101 ????? 11000 11", bge, B,
+            if ((sword_t)src1 >= (sword_t)src2) s->dnpc = s->pc + imm);
+    INSTPAT("0100000 ????? ????? 000 ????? 01100 11", sub, R, R(rd) = src1 - src2);
+    INSTPAT("??????? ????? ????? 011 ????? 00100 11", sltiu, I, if (src1 < imm) R(rd) = 1; else R(rd) = 0); // seqz
+    INSTPAT("??????? ????? ????? 000 ????? 11000 11", beq, B, if (src1 == src2) s->dnpc = s->pc + imm);
+    INSTPAT("??????? ????? ????? 001 ????? 11000 11", bne, B, if (src1 != src2) s->dnpc = s->pc + imm);
 
     INSTPAT("??????? ????? ????? ??? ????? ????? ??", inv, N, INV(s->pc));
     INSTPAT_END();
