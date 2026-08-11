@@ -185,4 +185,65 @@ INSTPAT("??????? ????? ????? 011 ????? 00100 11", sltiu, I, if (src1 < imm) R(rd
 
 …… 略  
 
+## 实现 string.h
+cpu-test 还有 string.c 和 hello-str.c 没有实现
 
+## 实现简易 sprintf
+hello-str.c 需要实现 sprintf，带可变参数，还要处理其他类型转字符串的问题。因为 hello-str 只需要实现 %d %s 暂时降低了难度。  
+
+流程是：
+```
+sprintf->vsprintf->vsnprintf
+```
+
+sprintf 主要是创建 va_list 变量把参数和 va_list 传给 vsprintf。  
+vsprintf 按 INT_MAX 大小传给vsnprintf 进行解析。难点就是 vsnprintf 了。  
+解析涉及其他类型转换为字符串，就会麻烦些。而且还要传入 buf，对 buf 要实现单字节写入的封装，要传 buf 指针，写入长度的 int 指针。长度 len 主要是为返回值提供数据。  
+
+``` c
+/*
+ * 向缓冲区写入一个字节
+ */
+void writec(char *buf, int *len, int cap, char c)
+{
+    if (*len < cap - 1)
+        buf[*len] = c;
+    (*len)++;
+}
+```
+
+写入 int 值实现：  
+``` c
+/*
+ * 封装写入整形到缓冲区，返回写入数
+ */
+void write_int(char *buf, int *len, int cap, int val)
+{
+    unsigned int u;
+    if (val < 0)
+    {
+        writec(buf, len, cap, '-');
+        u = (unsigned int)(-(val + 1)) + 1;
+    }
+    else
+        u = (unsigned int)(val);
+
+    char tmp[12] = {'\0'};
+    int i = 0;
+    do
+    {
+        tmp[i++] = '0' + (u % 10);
+        u /= 10;
+    } while (u != 0);
+
+    while (i > 0)
+    {
+        writec(buf, len, cap, tmp[--i]);
+    }
+}
+```
+
+根本上就是调用 writec 函数进行写入。  
+
+## 实现 printf
+printf 有别于 sprintf，其是写入串口而非内存。不需要考虑缓冲区大小。为了复用之前的代码，就拿嵌入式那一套写回调函数把整个逻辑理清楚。也就是用 `void *` 分别写实现内存写字节和流式写字节的函数，有点类似面向对象的多态，但这是 C 语言的回调函数。通过 void * 在内部特别的进行转换可以传结构体或者是整形。  
