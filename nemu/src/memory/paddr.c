@@ -73,8 +73,15 @@ void init_mem()
 
 word_t paddr_read(paddr_t addr, int len)
 {
+    word_t data;
     if (likely(in_pmem(addr)))
-        return pmem_read(addr, len);
+    {
+        data = pmem_read(addr, len);
+#ifdef CONFIG_MTRACE
+        Log("MTrace read at " FMT_PADDR " len = %d data = 0x%08x\n", addr, len, data);
+#endif
+        return data;
+    }
     IFDEF(CONFIG_DEVICE, return mmio_read(addr, len)); // 不在内存但有设备支持，交给设备模拟层读
     out_of_bound(addr);
     return 0;

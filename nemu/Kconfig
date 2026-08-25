@@ -146,6 +146,10 @@ config ITRACE
   bool "Enable instruction tracer"
   default y
 
+config MTRACE
+    bool "Enable memory trace"
+    default n
+
 config WATCHPOINT
     bool "Enable watchpoint"
     default y
