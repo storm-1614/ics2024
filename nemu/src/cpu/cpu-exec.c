@@ -33,8 +33,12 @@ static bool g_print_step = false;
 
 void device_update();
 
+void store_ringbuf(vaddr_t pc, const char *buflog);
+void print_ringbuf();
+
 static void trace_and_difftest(Decode *_this, vaddr_t dnpc)
 {
+    store_ringbuf(_this->pc, _this->logbuf);
 #ifdef CONFIG_ITRACE_COND
     if (ITRACE_COND)
     {
@@ -53,21 +57,21 @@ static void trace_and_difftest(Decode *_this, vaddr_t dnpc)
 
 static void exec_once(Decode *s, vaddr_t pc)
 {
-    s->pc = pc; // 指令地址
-    s->snpc = pc; // 假设顺序下一条
+    s->pc = pc;       // 指令地址
+    s->snpc = pc;     // 假设顺序下一条
     isa_exec_once(s); // isa 相关，不同架构各自实现
     cpu.pc = s->dnpc; // 实际的下一跳写回 CPU 的 pc
-#ifdef CONFIG_ITRACE
+#ifdef CONFIG_ITRACE  // itrace 实现
     char *p = s->logbuf;
-    p += snprintf(p, sizeof(s->logbuf), FMT_WORD ":", s->pc);
-    int ilen = s->snpc - s->pc;
+    p += snprintf(p, sizeof(s->logbuf), FMT_WORD ":", s->pc); // 写入当前 PC
+    int ilen = s->snpc - s->pc;                               // 计算指令长度
     int i;
     uint8_t *inst = (uint8_t *)&s->isa.inst;
 #ifdef CONFIG_ISA_x86
     for (i = 0; i < ilen; i++)
     {
 #else
-    for (i = ilen - 1; i >= 0; i--)
+    for (i = ilen - 1; i >= 0; i--) // 打印字节码
     {
 #endif
         p += snprintf(p, 4, " %02x", inst[i]);
@@ -80,7 +84,7 @@ static void exec_once(Decode *s, vaddr_t pc)
     memset(p, ' ', space_len);
     p += space_len;
 
-    void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
+    void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte); // 调用 disassemble 反汇编成汇编文本
     disassemble(p, s->logbuf + sizeof(s->logbuf) - p, MUXDEF(CONFIG_ISA_x86, s->snpc, s->pc), (uint8_t *)&s->isa.inst,
                 ilen);
 #endif
@@ -120,7 +124,9 @@ static void statistic()
 
 void assert_fail_msg()
 {
+    printf("xxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
     isa_reg_display();
+    print_ringbuf();
     statistic();
 }
 
