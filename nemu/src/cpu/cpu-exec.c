@@ -33,12 +33,11 @@ static bool g_print_step = false;
 
 void device_update();
 
-void store_ringbuf(vaddr_t pc, const char *buflog);
+void store_ringbuf(vaddr_t pc);
 void print_ringbuf();
 
 static void trace_and_difftest(Decode *_this, vaddr_t dnpc)
 {
-    store_ringbuf(_this->pc, _this->logbuf);
 #ifdef CONFIG_ITRACE_COND
     if (ITRACE_COND)
     {
@@ -59,6 +58,7 @@ static void exec_once(Decode *s, vaddr_t pc)
 {
     s->pc = pc;       // 指令地址
     s->snpc = pc;     // 假设顺序下一条
+    store_ringbuf(pc);
     isa_exec_once(s); // isa 相关，不同架构各自实现
     cpu.pc = s->dnpc; // 实际的下一跳写回 CPU 的 pc
 #ifdef CONFIG_ITRACE  // itrace 实现
@@ -124,7 +124,6 @@ static void statistic()
 
 void assert_fail_msg()
 {
-    printf("xxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
     isa_reg_display();
     print_ringbuf();
     statistic();
