@@ -13,6 +13,7 @@
  * See the Mulan PSL v2 for more details.
  ***************************************************************************************/
 
+#include "debug.h"
 #include <device/mmio.h>
 #include <isa.h>
 #include <memory/host.h>
@@ -92,6 +93,9 @@ void paddr_write(paddr_t addr, int len, word_t data)
     if (likely(in_pmem(addr)))
     {
         pmem_write(addr, len, data);
+#ifdef CONFIG_MTRACE
+    Log("MTrace write at " FMT_PADDR " len = %d data = 0x%08x\n", addr, len, data);
+#endif
         return;
     }
     IFDEF(CONFIG_DEVICE, mmio_write(addr, len, data); return);
