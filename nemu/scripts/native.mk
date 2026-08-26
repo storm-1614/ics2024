@@ -25,6 +25,7 @@ $(BINARY):: compile_git
 # Some convenient rules
 
 override ARGS ?= --log=$(BUILD_DIR)/nemu-log.txt
+override ARGS += -b # 默认批处理
 override ARGS += $(ARGS_DIFF)
 override ARGS += $(if $(ELF), -e $(ELF))
 

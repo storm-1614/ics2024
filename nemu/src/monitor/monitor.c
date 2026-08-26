@@ -14,8 +14,8 @@
  ***************************************************************************************/
 
 #include <isa.h>
-#include <utils/ftrace.h>
 #include <memory/paddr.h>
+#include <utils/ftrace.h>
 
 void init_rand();
 void init_log(const char *log_file);
@@ -78,12 +78,9 @@ static int parse_args(int argc, char *argv[])
     /* 用 static 约束函数可见范围 */
     const struct option table[] = {
         {"batch", no_argument, NULL, 'b'}, //
-        {"log", required_argument, NULL, 'l'},
-        {"diff", required_argument, NULL, 'd'},
-        {"port", required_argument, NULL, 'p'},
-        {"help", no_argument, NULL, 'h'},
-        {"elf", required_argument, NULL, 'e'},
-        {0, 0, NULL, 0},
+        {"log", required_argument, NULL, 'l'},  {"diff", required_argument, NULL, 'd'},
+        {"port", required_argument, NULL, 'p'}, {"help", no_argument, NULL, 'h'},
+        {"elf", required_argument, NULL, 'e'},  {0, 0, NULL, 0},
     };
     int o;
     while ((o = getopt_long(argc, argv, "-bhl:d:p:e:", table, NULL)) != -1)
@@ -147,7 +144,7 @@ void init_monitor(int argc, char *argv[])
     long img_size = load_img();
 
     /* Load ftrace*/
-    IFDEF(CONFIG_FTRACE, init_ftrace(elf_file));
+    IFDEF(CONFIG_FTRACE, if (elf_file) init_ftrace(elf_file));
 
     /* Initialize differential testing. */
     init_difftest(diff_so_file, img_size, difftest_port);
