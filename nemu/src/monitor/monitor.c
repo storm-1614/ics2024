@@ -14,6 +14,7 @@
  ***************************************************************************************/
 
 #include <isa.h>
+#include <utils/ftrace.h>
 #include <memory/paddr.h>
 
 void init_rand();
@@ -139,6 +140,9 @@ void init_monitor(int argc, char *argv[])
 
     /* Load the image to memory. This will overwrite the built-in image. */
     long img_size = load_img();
+
+    /* Load ftrace*/
+    IFDEF(CONFIG_FTRACE, init_ftrace("/data/project/os-learning/ics2024/am-kernels/tests/cpu-tests/build/recursion-riscv32-nemu.elf"));
 
     /* Initialize differential testing. */
     init_difftest(diff_so_file, img_size, difftest_port);
