@@ -8,7 +8,6 @@
  */
 
 #include "debug.h"
-#include <common.h>
 #include <elf.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -59,9 +58,9 @@ void init_ftrace(const char *elf_file)
     Log("Elf file loaded, entry point: 0x%x\n", ehdr->e_entry);
 
     Elf32_Shdr *shdr_table = (Elf32_Shdr *)((char *)map + ehdr->e_shoff); // 节头表
-    //Elf32_Shdr *shstrtab_hdr = &shdr_table[ehdr->e_shstrndx];             // 节头字符串表
+    // Elf32_Shdr *shstrtab_hdr = &shdr_table[ehdr->e_shstrndx];             // 节头字符串表
 
-    //char *shstrtab_data = (char *)map + shstrtab_hdr->sh_offset;
+    // char *shstrtab_data = (char *)map + shstrtab_hdr->sh_offset;
 
     Elf32_Shdr *symtab_hdr = NULL;
     Elf32_Shdr *strtab_hdr = NULL;
@@ -73,7 +72,7 @@ void init_ftrace(const char *elf_file)
     for (int i = 0; i < ehdr->e_shnum; i++)
     { // 找符号表节
         Elf32_Shdr *sh = &shdr_table[i];
-        //char *sec_name = shstrtab_data + sh->sh_name;
+        // char *sec_name = shstrtab_data + sh->sh_name;
         if (sh->sh_type == SHT_SYMTAB)
         {
             symtab_hdr = sh;
@@ -137,4 +136,13 @@ const char *find_func_name(uint32_t addr)
         }
     }
     return func_count ? funcs[func_count - 1].name : "<unknown>";
+}
+void ftrace_call(uint32_t pc, uint32_t target)
+{
+    Log("call [%s @ 0x%x] @ pc = 0x%x", find_func_name(target), target, pc);
+}
+
+void ftrace_ret(uint32_t pc)
+{
+    Log("ret [%s] @ pc = 0x%x", find_func_name(pc), pc);
 }
