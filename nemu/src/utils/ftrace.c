@@ -146,7 +146,7 @@ const char *find_func_name(uint32_t addr)
 void ftrace_call(uint32_t pc, uint32_t target)
 {
     const char *name = find_func_name(target);
-    Log("%*scall [%s @ 0x%x] @ pc = 0x%x", (ftrace_top + 1) * 2, "", name, target, pc);
+    printf("0x%x:%*scall [%s @ 0x%x]\n",pc, (ftrace_top + 1) * 2, "", name, target);
     if (ftrace_top + 1 < FTRACE_DEPTH)
         ftrace_stack[++ftrace_top] = name;
 }
@@ -155,10 +155,10 @@ void ftrace_ret(uint32_t pc)
 {
     if (ftrace_top < 0)
     {
-        Log("ret [<unknown] @ 0x%x (stack empty!)\n", pc);
+        printf("ret [<unknown] @ 0x%x (stack empty!)\n", pc);
         return;
     }
     const char *name = ftrace_stack[ftrace_top];
     ftrace_top--;
-    Log("%*sret [%s] @ pc = 0x%x", (ftrace_top + 1) * 2, "", name, pc);
+    printf("0x%x:%*sret [%s]\n",pc, (ftrace_top + 1) * 2, "", name);
 }
