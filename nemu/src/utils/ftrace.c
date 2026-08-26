@@ -8,12 +8,18 @@
  */
 
 #include "debug.h"
+#include "utils.h"
 #include <elf.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#define FTRACE_DEPTH 1024
+
+static const char *ftrace_stack[FTRACE_DEPTH];
+static int ftrace_top = -1;
 
 typedef struct
 {
@@ -139,10 +145,20 @@ const char *find_func_name(uint32_t addr)
 }
 void ftrace_call(uint32_t pc, uint32_t target)
 {
-    Log("call [%s @ 0x%x] @ pc = 0x%x", find_func_name(target), target, pc);
+    const char *name = find_func_name(target);
+    Log("%*scall [%s @ 0x%x] @ pc = 0x%x", (ftrace_top + 1) * 2, "", name, target, pc);
+    if (ftrace_top + 1 < FTRACE_DEPTH)
+        ftrace_stack[++ftrace_top] = name;
 }
 
 void ftrace_ret(uint32_t pc)
 {
-    Log("ret [%s] @ pc = 0x%x", find_func_name(pc), pc);
+    if (ftrace_top < 0)
+    {
+        Log("ret [<unknown] @ 0x%x (stack empty!)\n", pc);
+        return;
+    }
+    const char *name = ftrace_stack[ftrace_top];
+    ftrace_top--;
+    Log("%*sret [%s] @ pc = 0x%x", (ftrace_top + 1) * 2, "", name, pc);
 }
