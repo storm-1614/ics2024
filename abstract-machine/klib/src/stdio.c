@@ -35,12 +35,13 @@ void emit_memory(void *context, char c)
 /*
  * 封装写入整形到缓冲区，返回写入数
  */
-static void write_int(emit_fn emit, void *context, int val)
+static void write_int(emit_fn emit, void *context, int val, int width, int zero_pad)
 {
     unsigned int u;
+    bool neg = false;
     if (val < 0)
     {
-        emit(context, '-');
+        neg = true;
         u = (unsigned int)(-(val + 1)) + 1;
     }
     else
@@ -54,6 +55,20 @@ static void write_int(emit_fn emit, void *context, int val)
         u /= 10;
     } while (u != 0);
 
+    int ndigits = i;
+    int pad = width - ndigits;
+    if (pad > 0 && zero_pad)
+    {
+        if (neg)
+            emit(context, '-');
+        while (pad-- > 0)
+            emit(context, '0');
+        while (i > 0)
+            emit(context, tmp[--i]);
+        return;
+    }
+    if (neg)
+        emit(context, '-');
     while (i > 0)
         emit(context, tmp[--i]);
 }
@@ -99,10 +114,21 @@ static void format_parsing(emit_fn emit, void *context, const char *fmt, va_list
             continue;
         }
         fmt++;
+        int zero_pad = 0, width = 0;
+        if (*fmt == '0')
+        {
+            zero_pad = 1;
+            fmt++;
+        }
+        while (*fmt >= '0' && *fmt <= '9')
+        {
+            width = width * 10 + (*fmt - '0');
+            fmt++;
+        }
         if (*fmt == 'd')
-            write_int(emit, context, va_arg(ap, int));
+            write_int(emit, context, va_arg(ap, int), width, zero_pad);
         else if (*fmt == 's')
-            write_str(emit,context, va_arg(ap, char *));
+            write_str(emit, context, va_arg(ap, char *));
         else if (*fmt == '%')
             emit(context, '%');
     }
