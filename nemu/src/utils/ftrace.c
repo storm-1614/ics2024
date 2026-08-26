@@ -8,7 +8,6 @@
  */
 
 #include "debug.h"
-#include "utils.h"
 #include <elf.h>
 #include <fcntl.h>
 #include <stdlib.h>
