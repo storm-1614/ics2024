@@ -154,6 +154,16 @@ config FTRACE
     bool "Enable function trace"
     default n
 
+config DTRACE
+    bool "Enable device trace"
+    default n
+
+config DTRACE_DEV
+    depends on DTRACE
+    string "Only trace device whose name contains this substring(enpty = all)"
+    default ""
+
+
 config WATCHPOINT
     bool "Enable watchpoint"
     default y
