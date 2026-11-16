@@ -21,13 +21,16 @@
 typedef void(*io_callback_t)(uint32_t, int, bool);
 uint8_t* new_space(int size);
 
+/* 设备地址映射记录
+ */
 typedef struct {
-  const char *name;
+  const char *name; // 设备名称
   // we treat ioaddr_t as paddr_t here
-  paddr_t low;
+  // 这条映射覆盖的客户机地址范围
+  paddr_t low; 
   paddr_t high;
-  void *space;
-  io_callback_t callback;
+  void *space; // NEMU 宿主机中保存设备状态的缓冲区
+  io_callback_t callback;  // 设备处理的回调函数，用于模拟读写带来的设备行为
 } IOMap;
 
 static inline bool map_inside(IOMap *map, paddr_t addr) {
